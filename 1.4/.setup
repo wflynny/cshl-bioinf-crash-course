@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+mkdir -p data/project_files
+mkdir -p scripts/analysis_scripts
+mkdir -p projects/alpha_project/data
+mkdir -p projects/private_project/data
+mkdir -p projects/private_project/scripts
+chmod -R g-w *
+find * -type d -exec chmod +x {} \;
+chmod -r projects/private_project
+
+get_lorem() {
+  local output_file="${1}"
+  wget -O "${output_file}" -q "https://corporatelorem.woblick.dev/api/10?format=text"
+}
+
+get_lorem data/project_files/readme.txt
+get_lorem scripts/analysis_scripts/analyze.sh
+get_lorem projects/alpha_project/data/results.csv
+
+cat > hint <<EOF
+#!/usr/bin/env bash
+echo "Hello, ${USER}!"
+echo "Inside the 'analysis_scripts' directory is another executable.  Find it and run it!"
+EOF
+chmod +x hint
+
+
+cat > scripts/analysis_scripts/.hint <<EOF
+#!/usr/bin/env bash
+echo "You found me, ${USER}!"
+echo "Traverse back up the directory tree to find the next hint in the subdirectory:"
+echo -e "\t1.4/projects/private_project/data"
+echo "Find it and run it!"
+EOF
+chmod +x scripts/analysis_scripts/.hint
+
+cat > projects/private_project/data/hint <<EOF
+#!/usr/bin/env bash
+echo "You found me, ${USER}!"
+echo "There is sibling directory called 'scripts' under the 'private_project' directory"
+echo "Find your next hint there and run it!"
+EOF
+chmod +x projects/private_project/data/hint
+
+cat > projects/private_project/scripts/hint <<EOF
+#!/usr/bin/env bash
+echo "You found me, ${USER}!"
+echo "Great job!"
+echo "Now find your way back to the 1.4 parent directory using only 'cd ..'"
+EOF
+chmod +x projects/private_project/scripts/hint
+
