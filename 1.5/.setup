@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+mkdir probes
+wget -q https://cf.10xgenomics.com/supp/cell-exp/probeset/Chromium_Mouse_Transcriptome_Probe_Set_v1.1.1_GRCm39-2024-A.csv
+wget -q https://cf.10xgenomics.com/supp/cell-exp/probeset/Chromium_Mouse_Transcriptome_Probe_Set_v1.1.1_GRCm39-2024-A.bed
+mkdir raw_data
+
+seq {1..10000} 
+
+

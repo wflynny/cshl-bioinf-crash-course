@@ -1,4 +1,5 @@
-# cshl-bioinf-crash-course
-CSHL Single Cell &amp; Spatial Transcriptomics Bioinformatics Crash Course
+# CSHL Single Cell &amp; Spatial Transcriptomics Bioinformatics Crash Course
 
-See the [repo wiki](https://github.com/wflynny/cshl-bioinf-crash-course/wiki) for course materials.
+This portion of the repository just hold some dummy code and setup scripts.  To
+see the course contents, see the **[repo
+wiki](https://github.com/wflynny/cshl-bioinf-crash-course/wiki)**.
