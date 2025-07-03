@@ -1,10 +1,36 @@
 #!/usr/bin/env bash
 
-mkdir probes
+mkdir -p probes && cd probes
 wget -q https://cf.10xgenomics.com/supp/cell-exp/probeset/Chromium_Mouse_Transcriptome_Probe_Set_v1.1.1_GRCm39-2024-A.csv
 wget -q https://cf.10xgenomics.com/supp/cell-exp/probeset/Chromium_Mouse_Transcriptome_Probe_Set_v1.1.1_GRCm39-2024-A.bed
-mkdir raw_data
 
-seq {1..10000} 
+cd -
 
+mkdir -p expt1 expt2 expt3
+mkdir -p raw_data
+cd raw_data
+seq 0 9999 > tmp
+split -d -l 100 --additional-suffix=.csv tmp "results_"
+rm tmp
+mkdir -p results-20-29 extra_data
+mv results_2?.csv results-20-29/
+chmod -w results-20-29
 
+seq 10000 100099 > extra_data/extra_results.csv
+
+cd -
+
+cat > exercise <<EOF
+#!/usr/bin/env bash
+echo "Raw data from multipe experiments is in the 'raw_data' directory."
+echo -e "1.  Move all experimental results numbered 00-09 to the 'expt1' folder."
+echo -e "2.  Move all experimental results numbered 10-19 to the 'expt2' folder."
+echo -e "3.  Move all experimental results numbered 20-29 to the 'expt3' folder."
+echo -e "      That didn't work?  Why?"
+echo -e "      Let's copy them to 'expt3' instead."
+echo -e "4.  Copy all other results numbered 30+ to the 'expt_aux' folder."
+echo -e "      There's also a subdirectory called 'extra_data'".
+echo -e "      How can we copy that?"
+EOF
+
+chmod +x exercise
