@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tracking one molecule</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><p class="kicker">Tracking one molecule · 10x 3′ gene expression</p><h1 id="title"></h1></div>
+    <div class="count"><span id="cur">1</span> / <span id="tot"></span></div>
+  </header>
+
+  <section class="stage"><div id="mol"></div><div class="cap"><p class="c" id="c"></p><p class="d" id="d"></p></div></section>
+
+  <!-- colour key (static; matches the .k-* classes / :root tokens in styles.css) -->
+  <div class="key">
+    <span><i class="sw" style="background:var(--mol)"></i>your transcript</span>
+    <span><i class="sw" style="background:var(--molgray)"></i>removed</span>
+    <span><i class="sw" style="background:var(--cdna)"></i>DNA copy</span>
+    <span><i class="sw" style="background:var(--handle)"></i>primer handle</span>
+    <span><i class="sw" style="background:var(--bc)"></i>droplet barcode</span>
+    <span><i class="sw" style="background:var(--umi)"></i>UMI</span>
+  </div>
+
+  <div class="controls">
+    <button class="btn" id="prev">← Back</button>
+    <div class="dots" id="dots"></div>
+    <button class="btn p" id="next">Next →</button>
+  </div>
+</div>
+
+<!-- Load order matters: engine first (defines the drawing helpers + W, blocks,
+     lib, molHTML, ...), then content (defines STEPS + SPECIAL using them).
+     Navigation boots itself on DOMContentLoaded. -->
+<script src="engine.js"></script>
+<script src="content.js"></script>
+</body>
+</html>

@@ -1,0 +1,218 @@
+/* =============================================================================
+   content.js — THE FILE TO EDIT.
+
+   Three things live here:
+     1. CONTENT  — the editable strings/numbers (sequences, gene, matrix...).
+                   Change a value here and it updates everywhere it's shown.
+     2. STEPS    — the ordered list of slides.
+     3. SPECIAL  — the four custom data panels (reads / extract / dedup / measure).
+
+   ---- STEP schema -----------------------------------------------------------
+   Each STEP is an object:
+     { title:"...", c:"caption (HTML ok)", d:"detail line (HTML ok)",
+       AND one of:
+         mol: <MOLECULE>      // a molecule diagram (most steps), or
+         special:"name"       // a custom panel defined in SPECIAL below
+     }
+
+   A MOLECULE is either a single molecule:
+     { cols:[ ... ], topEnds, botEnds, arrow?, annotTop? }
+   or several shown together:
+     { inline:true, mols:[ <MOLECULE>, <MOLECULE>, ... ] }   // side by side
+     { mols:[ <MOLECULE>, ... ] }                            // stacked
+
+   COLUMNS are built with c(width, topBlock, bottomBlock) from engine.js:
+       c(W.bc, BC, BC)   -> double-stranded barcode column
+       c(W.t,  MOL, 0)   -> single-stranded transcript (no bottom strand)
+       c(W.oh, 0,  OA)   -> a one-base A overhang on the bottom strand only
+   Available blocks: R1 R2 BC UM PA PT MOL CD TSO P5 I5 I7 P7 OA OT  (see engine.js)
+   Available widths: W.read1 W.read2 W.bc W.umi W.poly W.t W.cdna W.tso W.p5 W.i5 W.i7 W.p7 W.oh
+
+   topEnds / botEnds = ["leftLabel","rightLabel"], e.g. DS5 and DS3.
+   arrow / annotTop / read brackets address COLUMNS by index (0 = leftmost).
+   To add a step: copy a step object, drop it into STEPS where you want it.
+============================================================================= */
+
+var CONTENT = {
+  readName: "LH00341:273:23KNN2LT3:1:1101:13035:1061",   // FASTQ read header (without the read suffix)
+  droplet:  "CACGATTAGATAGTGA",   // 16 bp droplet (10x) barcode
+  dropletShort: "…GTGA",          // short form shown in the matrix / sentence
+  umis:     ["TAACCTGTGTCT", "GAAGTTAGGGCA"],  // 12 bp UMIs; [0] is the molecule we track
+  i7: "ATGACGTCGC",               // 10 bp i7 sample index
+  i5: "ATCCTGACCT",               // 10 bp i5 sample index
+  r1qual: "JFJJJJJJJJJJJJJJJJJJJJJJJJJJ",       // Read 1 quality line (28 chars)
+  r2seq:  "CCCTCAACACGGATATCAGCATCCTGTCCTTGCAGGCTTCTGAATTCCCTTCTGAGTTAATGTCAAATGACAGCAAAGCACTGTGTGGCT",
+  gene:   "Actb",                 // gene the fragment aligns to
+  locus:  "chr5:142,903,115–142,906,754",       // alignment coordinates (placeholder — set to your build)
+
+  // deduplication panel: each species is one (droplet, UMI, gene) and its PCR copy count.
+  // insert = width in px (use length to imply different genes); umi = a colour.
+  dedup: {
+    dropletColor: "var(--bc)",
+    species: [
+      { umi:"#5f86c4", insert:54, copies:3 },   // gene A, UMI 1
+      { umi:"#caa24a", insert:54, copies:2 },   // gene A, UMI 2  (same gene, different molecule)
+      { umi:"#9a6cc9", insert:82, copies:4 }    // gene B (longer insert)
+    ]
+  },
+
+  // counts matrix: rows = droplets, columns = genes. hit = [rowIndex, colIndex] to highlight.
+  matrix: {
+    genes: ["Actb", "Gapdh", "Cd3e", "Pecam1"],
+    rows: [ { bc:"…GTGA", counts:[2,1,0,0] },
+            { bc:"…ACGT", counts:[0,3,1,0] },
+            { bc:"…TTGC", counts:[1,0,0,2] } ],
+    hit: [0, 0]
+  }
+};
+
+var STEPS = [
+ { title:"One mRNA, in one cell",
+   c:"This is what we want to count: a single transcript from one gene.",
+   d:"Single-stranded RNA, drawn tail-first — the <b>poly(A) tail</b> on the left is the only thing we can grab.",
+   mol:{ topEnds:DS5, cols:[ c(W.poly,PA), c(W.t,MOL), c(W.t,MOL), c(W.t,MOL) ] } },
+
+ { title:"Captured on the bead",
+   c:"The bead's poly(dT) base-pairs the poly(A) tail.",
+   d:"Only the tail is paired; the transcript dangles. The primer also carries a <b>droplet barcode</b> (which droplet) and a <b>UMI</b> (which molecule).",
+   mol:{ topEnds:DS5, botEnds:DS3, cols: handlesBot().concat([ c(W.poly,PA,PT), c(W.t,MOL), c(W.t,MOL), c(W.t,MOL) ]) } },
+
+ { title:"Reverse transcription",
+   c:"RT copies the RNA into a cDNA strand.",
+   d:"An <b>RNA : cDNA hybrid</b> — RNA template on top, the new DNA copy beneath, antiparallel. Barcode and UMI are now welded to a copy of your transcript.",
+   mol:{ topEnds:DS5, botEnds:DS3, cols: handlesBot().concat([ c(W.poly,PA,PT), c(W.t,MOL,CD), c(W.t,MOL,CD), c(W.t,MOL,CD) ]) } },
+
+ { title:"Template switch",
+   c:"At the far (5′) end, C's are added and a template-switch oligo is copied on.",
+   d:"The copy now has a handle at <b>both</b> ends, so it can be amplified by PCR.",
+   mol:{ topEnds:DS5, botEnds:DS3, cols: handlesBot().concat([ c(W.poly,PA,PT), c(W.t,MOL,CD), c(W.t,MOL,CD), c(W.t,MOL,CD), c(W.tso,0,TSO) ]) } },
+
+ { title:"Second strand, then amplify",
+   c:"The RNA is removed, the second strand is made, and it's PCR-amplified.",
+   d:"Now <b>double-stranded DNA</b> — many identical copies, every one carrying the same barcode and the same UMI.",
+   mol:{ topEnds:DS5, botEnds:DS3, cols: handlesDs().concat([ c(W.poly,PA,PT), c(W.t,MOL,MOL), c(W.t,MOL,MOL), c(W.t,MOL,MOL), c(W.tso,TSO,TSO) ]) } },
+
+ { title:"Fragmentation cuts it into pieces",
+   c:"The long molecule is cut into separate fragments.",
+   d:"Each cut makes its own double-stranded piece. They're all still here for now.",
+   mol:{ inline:true, mols:[
+     { topEnds:DS5, botEnds:DS3, tag:"3′ piece", cols: handlesDs().concat([ c(W.poly,PA,PT), c(W.t,MOL,MOL) ]) },
+     { topEnds:DS5, botEnds:DS3, tag:"internal", cols:[ c(W.t,MOL,MOL) ] },
+     { topEnds:DS5, botEnds:DS3, tag:"5′ piece", cols:[ c(W.t,MOL,MOL), c(W.tso,TSO,TSO) ] }
+   ] } },
+
+ { title:"Only the 3′ piece is kept",
+   c:"The piece still attached to the barcode survives; the rest is discarded.",
+   d:"The internal and 5′ pieces carry transcript but <b>no barcode</b> — and no Read 1 handle to take a P5 end in the final PCR — so they drop out.",
+   mol:{ inline:true, mols:[
+     { topEnds:DS5, botEnds:DS3, tag:"kept", cols: handlesDs().concat([ c(W.poly,PA,PT), c(W.t,MOL,MOL) ]) },
+     { topEnds:DS5, botEnds:DS3, gray:true, tag:"discarded", cols:[ c(W.t,MOL,MOL) ] },
+     { topEnds:DS5, botEnds:DS3, gray:true, tag:"discarded", cols:[ c(W.t,MOL,MOL), c(W.tso,TSO,TSO) ] }
+   ] } },
+
+ { title:"Read 2 adapter ligated by an A/T overhang",
+   c:"The kept piece gets a single 3′ A; the adapter has a matching T overhang.",
+   d:"<b>A-tailing</b> adds one A to the insert's 3′ end (a one-base overhang on its strand). The adapter's complementary <b>T overhang</b> base-pairs it, and ligase joins them.",
+   mol:{ inline:true, mols:[
+     { topEnds:DS5, botEnds:DS3, tag:"insert · 3′ A overhang", cols: handlesDs().concat([ c(W.poly,PA,PT), c(W.t,MOL,MOL), c(W.oh,0,OA) ]) },
+     { topEnds:DS3, botEnds:DS5, tag:"Read 2 adapter · T overhang", cols:[ c(W.oh,OT,0), c(W.read2,R2,R2) ] }
+   ] } },
+
+ { title:"Index PCR adds the outer adapters",
+   c:"P5 / i5 join the barcode side; i7 / P7 join the Read 2 side.",
+   d:"<b>P5 / P7</b> grab the flow cell. <b>i5 / i7</b> are shared by every fragment in this library — really library barcodes, added at each end by the index-PCR primers.",
+   mol:{ inline:true, mols:[
+     { topEnds:DS5, botEnds:DS3, tag:"P5 / i5 primer", cols:[ c(W.p5,P5,P5), c(W.i5,I5,I5) ] },
+     { topEnds:DS5, botEnds:DS3, cols: handlesDs().concat([ c(W.poly,PA,PT), c(W.t,MOL,MOL), c(W.read2,R2,R2) ]) },
+     { topEnds:DS5, botEnds:DS3, tag:"i7 / P7 primer", cols:[ c(W.i7,I7,I7), c(W.p7,P7,P7) ] }
+   ] } },
+
+ { title:"Sequencing — Read 1, then Index 1",
+   c:"Each read is primed off a handle and extends one way (arrow).",
+   d:"<b>Read 1</b> reads the barcode + UMI (28 bp). <b>Index 1</b> reads the i7 library barcode.",
+   mol:{ mols:[ lib([{from:2,to:4,dir:"right",label:"Read 1 · 28 bp"}]),
+                lib([{from:7,to:8,dir:"right",label:"Index 1 · i7 · 10 bp"}]) ] } },
+
+ { title:"Sequencing — Index 2, then Read 2",
+   c:"The flow cell turns the fragment around to read the other side.",
+   d:"<b>Index 2</b> reads the i5 library barcode. <b>Read 2</b> primes off the Read 2 handle and reads back into the transcript (90 bp).",
+   mol:{ mols:[ lib([{from:1,to:2,dir:"left",label:"Index 2 · i5 · 10 bp"}]),
+                lib([{from:6,to:7,dir:"left",label:"Read 2 · 90 bp"}]) ] } },
+
+ { title:"The reads, and where each piece lands", special:"reads",
+   c:"Only some regions are actually base-called. Each lands in a specific read.",
+   d:"R1 holds the barcode (green) and UMI (orange); the i7 / i5 indexes (gold) sit in the read header; R2 holds the transcript (pink)." },
+
+ { title:"Extract the pieces, align the fragment", special:"extract",
+   c:"From the reads we pull three things — and turn the fragment into a gene.",
+   d:"Barcode and UMI are read off directly. The transcript fragment is aligned to the genome, which turns a string of bases into a <b>gene name + location</b>. The molecule is now a triple: <b>(droplet, UMI, gene)</b>." },
+
+ { title:"…done for many molecules, then deduplicated", special:"dedup",
+   c:"Across millions of molecules, copies of the same (droplet, UMI, gene) collapse to one.",
+   d:"Two here share the <b>gene</b> but differ by <b>UMI</b> (colour) — two real molecules. The third is a different gene (longer insert). PCR copies vanish; real molecules remain." },
+
+ { title:"…and it becomes the counts matrix", special:"measure",
+   c:"Two distinct UMIs of " + CONTENT.gene + " in this droplet means a count of 2.",
+   d:"Rows = droplets, columns = genes. Each deduplicated molecule adds 1 to its droplet × gene cell — the matrix you load in Scanpy or Seurat." },
+];
+
+/* ---- small content helpers ---- */
+function rep(ch, n){ return new Array(n + 1).join(ch); }
+function fqBlock(title, body){ return '<div class="fqb"><div class="fqt">'+title+'</div><div class="fastq">'+body+'</div></div>'; }
+function exBox(cls, seq, label){ return '<div class="exbox '+cls+'">'+seq+'<small>'+label+'</small></div>'; }
+
+/* ---- SPECIAL: the four custom data panels --------------------------------- */
+var SPECIAL = {
+  // (12) library cartoon with brackets over sequenced regions, plus the two FASTQ records
+  reads: function(){
+    var cartoon = molHTML({ topEnds:DS5, botEnds:DS3, cols:libCols(), annotTop:[
+      {from:3,to:4,label:"Read 1"}, {from:8,to:8,label:"Index 1"},
+      {from:1,to:1,label:"Index 2"}, {from:6,to:6,label:"Read 2"} ] });
+    var idx = '<span class="x">'+CONTENT.i7+'</span><span class="h">+</span><span class="x">'+CONTENT.i5+'</span>';
+    var r1 = '<span class="h">@'+CONTENT.readName+' 1:N:0:</span>'+idx+'\n'
+           + '<span class="b">'+CONTENT.droplet+'</span><span class="u">'+CONTENT.umis[0]+'</span>\n+\n'+CONTENT.r1qual;
+    var r2 = '<span class="h">@'+CONTENT.readName+' 2:N:0:</span>'+idx+'\n'
+           + '<span class="ins">'+CONTENT.r2seq+'</span>\n+\n'+rep("J", CONTENT.r2seq.length);
+    return cartoon + '<div class="fqset">' + fqBlock("Read 1 FASTQ", r1) + fqBlock("Read 2 FASTQ", r2) + '</div>';
+  },
+
+  // (13) extract barcode/UMI/fragment, align the fragment to a gene + location
+  extract: function(){
+    return '<div class="extract"><div class="exrow">'
+      + exBox("b", CONTENT.droplet,                 "droplet barcode")
+      + exBox("u", CONTENT.umis[0],                 "UMI")
+      + exBox("m", CONTENT.r2seq.slice(0,12) + "…", "transcript fragment")
+      + '</div><div class="exarr">align the fragment to the genome ↓</div>'
+      + '<div class="exgene">'+CONTENT.gene+'<span class="loc">'+CONTENT.locus+'</span></div></div>';
+  },
+
+  // (14) PCR copies of several species collapse to one molecule each
+  dedup: function(){
+    var d = CONTENT.dedup;
+    function row(sp){ return '<div class="ddrow">' + mini(30, d.dropletColor) + mini(24, sp.umi) + mini(sp.insert, "var(--mol)") + '</div>'; }
+    var copies = '', collapsed = '';
+    d.species.forEach(function(sp){ for(var k=0;k<sp.copies;k++) copies += row(sp); collapsed += row(sp); });
+    return '<div class="ddwrap">'
+      + '<div class="ddcol"><div class="ddh">PCR copies</div>'+copies+'</div>'
+      + '<div class="ddarrow">collapse on<br>(droplet, UMI, gene)<br>→</div>'
+      + '<div class="ddcol"><div class="ddh">molecules</div>'+collapsed+'</div></div>';
+  },
+
+  // (15) the measurement sentence + the counts matrix
+  measure: function(){
+    var umis = CONTENT.umis.map(function(u){ return '<span class="ub">UMI · '+u+'</span>'; }).join('');
+    var line = '<div class="mline"><span>We measured</span>'
+      + '<div class="umistack">'+umis+'</div>'
+      + '<span>distinct molecules of</span><span class="gbox">'+CONTENT.gene+'</span>'
+      + '<span>in droplet</span><span class="bcbox">'+CONTENT.dropletShort+'</span></div>';
+    var m = CONTENT.matrix;
+    var head = "<tr><td class='rl'></td>" + m.genes.map(function(g){ return "<th>"+g+"</th>"; }).join("") + "</tr>";
+    var body = m.rows.map(function(r, ri){
+      return "<tr><td class='rl'>"+r.bc+"</td>" + r.counts.map(function(v, gi){
+        var hit = (ri === m.hit[0] && gi === m.hit[1]);
+        return "<td class='"+(hit?"hit":"")+"'>"+(v || "·")+"</td>";
+      }).join("") + "</tr>";
+    }).join("");
+    return '<div class="measure">'+line+'<table class="mx">'+head+body+'</table></div>';
+  }
+};
