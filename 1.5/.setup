@@ -1,36 +1,68 @@
 #!/usr/bin/env bash
+mkdir -p data/project_files
+mkdir -p scripts/analysis_scripts
+mkdir -p projects/alpha_project/data
+mkdir -p projects/private_project/data
+mkdir -p projects/private_project/scripts
+chmod -R g-w *
+find * -type d -exec chmod +x {} \;
+chmod -r projects/private_project
 
-mkdir -p probes && cd probes
-wget -q https://cf.10xgenomics.com/supp/cell-exp/probeset/Chromium_Mouse_Transcriptome_Probe_Set_v1.1.1_GRCm39-2024-A.csv
-wget -q https://cf.10xgenomics.com/supp/cell-exp/probeset/Chromium_Mouse_Transcriptome_Probe_Set_v1.1.1_GRCm39-2024-A.bed
+get_lorem() {
+  # local placeholder text (no network dependency); the hint chain does not
+  # depend on these files' contents, they just make the tree feel realistic.
+  local output_file="${1}"
+  cat > "${output_file}" <<'LOREM'
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Placeholder content
+for the navigation exercise. What is inside this file does not matter; finding
+your way to it does.
+LOREM
+}
 
-cd -
+get_lorem data/project_files/readme.txt
+get_lorem scripts/analysis_scripts/analyze.sh
+get_lorem projects/alpha_project/data/results.csv
 
-mkdir -p expt1 expt2 expt3
-mkdir -p raw_data
-cd raw_data
-seq 0 9999 > tmp
-split -d -l 100 --additional-suffix=.csv tmp "results_"
-rm tmp
-mkdir -p results-20-29 extra_data
-mv results_2?.csv results-20-29/
-chmod -w results-20-29
-
-seq 10000 100099 > extra_data/extra_results.csv
-
-cd -
-
-cat > exercise <<EOF
+cat > hint <<EOF
 #!/usr/bin/env bash
-echo "Raw data from multipe experiments is in the 'raw_data' directory."
-echo -e "1.  Move all experimental results numbered 00-09 to the 'expt1' folder."
-echo -e "2.  Move all experimental results numbered 10-19 to the 'expt2' folder."
-echo -e "3.  Move all experimental results numbered 20-29 to the 'expt3' folder."
-echo -e "      That didn't work?  Why?"
-echo -e "      Let's copy them to 'expt3' instead."
-echo -e "4.  Copy all other results numbered 30+ to the 'expt_aux' folder."
-echo -e "      There's also a subdirectory called 'extra_data'".
-echo -e "      How can we copy that?"
+echo "Hello!"
+echo "Inside the 'analysis_scripts' directory is another executable.  Find it and run it!"
 EOF
+chmod +x hint
 
-chmod +x exercise
+
+cat > scripts/analysis_scripts/.hint <<EOF
+#!/usr/bin/env bash
+echo "You found me!"
+echo "Traverse back up the directory tree to find the next hint in the subdirectory:"
+echo -e "\t1.4/projects/private_project/data"
+echo "Find it and run it!"
+EOF
+chmod +x scripts/analysis_scripts/.hint
+
+cat > projects/private_project/data/hint <<EOF
+#!/usr/bin/env bash
+echo "You found me!"
+echo "There is sibling directory called 'scripts' under the 'private_project' directory"
+echo "Find your next hint there and run it!"
+EOF
+chmod +x projects/private_project/data/hint
+
+cat > projects/private_project/scripts/hint <<EOF
+#!/usr/bin/env bash
+echo "You found me!"
+echo "Great job!"
+echo "Now find your way back to the 1.4 parent directory using only 'cd ..'"
+EOF
+chmod +x projects/private_project/scripts/hint
+
+
+# --- spaces-in-paths lesson (referenced by module 1.05) -----------------------
+# A directory whose name contains a space, plus a file to find inside it.
+# Created last, after the unquoted `*` globs above, so the space doesn't break them.
+mkdir -p "Secret Stuff"
+cat > "Secret Stuff/congrats.txt" <<EOF
+Nice work!
+If you can read this, you figured out how to reference a path containing a space
+— quote it ("Secret Stuff") or escape the space (Secret\ Stuff).
+EOF
