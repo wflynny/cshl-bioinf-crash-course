@@ -69,7 +69,7 @@ echo
 
 # --- optionally seed placeholder source data (testing only) --------------------
 # Creates the canonical tiny dataset layout with empty-but-valid files so the
-# rest of the script (and reset_1.09.sh) can be exercised end-to-end locally.
+# rest of the script (and reset_1.10.sh) can be exercised end-to-end locally.
 if [ "${SEED_TEST_DATA}" -eq 1 ]; then
   echo "Seeding PLACEHOLDER test data under ${SHARED} (not real sequencing data)..."
   mkdir -p "${SHARED}/tiny_fastqs"
@@ -108,7 +108,9 @@ else
 fi
 
 # --- per-module working dirs ---------------------------------------------------
-mkdir -p "${COURSE}/work"/{1.04,1.05,1.06,1.07,1.08,1.09}
+# numbers match the renumbered hands-on modules (1.05 Navigating-CLI ... 1.10
+# Putting-It-All-Together).
+mkdir -p "${COURSE}/work"/{1.05,1.06,1.07,1.08,1.09,1.10}
 
 # --- one read-only data location, symlinked from the shared source -------------
 # ln -sfn: force-replace and don't dereference an existing symlink-to-dir, so
@@ -120,7 +122,7 @@ ln -sfn "${SHARED}/tiny_ref"    "${COURSE}/work/data/tiny_ref"
 # --- report where everything now lives -----------------------------------------
 echo "Setup complete."
 echo "  working tree : ${COURSE}/work"
-echo "  modules      : 1.04,1.05,1.06,1.07,1.08,1.09"
+echo "  modules      : 1.05,1.06,1.07,1.08,1.09,1.10"
 echo "  tiny dataset : ${COURSE}/work/data/{tiny_fastqs,tiny_ref}"
 echo
 echo "The dataset directories are symlinks into the read-only source; work in"

@@ -9,8 +9,14 @@ find * -type d -exec chmod +x {} \;
 chmod -r projects/private_project
 
 get_lorem() {
+  # local placeholder text (no network dependency); the hint chain does not
+  # depend on these files' contents, they just make the tree feel realistic.
   local output_file="${1}"
-  wget -O "${output_file}" -q "https://corporatelorem.woblick.dev/api/10?format=text"
+  cat > "${output_file}" <<'LOREM'
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Placeholder content
+for the navigation exercise. What is inside this file does not matter; finding
+your way to it does.
+LOREM
 }
 
 get_lorem data/project_files/readme.txt
@@ -50,3 +56,13 @@ echo "Now find your way back to the 1.4 parent directory using only 'cd ..'"
 EOF
 chmod +x projects/private_project/scripts/hint
 
+
+# --- spaces-in-paths lesson (referenced by module 1.05) -----------------------
+# A directory whose name contains a space, plus a file to find inside it.
+# Created last, after the unquoted `*` globs above, so the space doesn't break them.
+mkdir -p "Secret Stuff"
+cat > "Secret Stuff/congrats.txt" <<EOF
+Nice work, ${USER}!
+If you can read this, you figured out how to reference a path containing a space
+— quote it ("Secret Stuff") or escape the space (Secret\ Stuff).
+EOF

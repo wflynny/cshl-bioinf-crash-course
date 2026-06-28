@@ -13,7 +13,7 @@ fi
 for filename in ${result_dir}/*.gz
 do
   uncomp_filename=${filename%.*}    # strip off the .gz suffix
-  gunzip ${Filename}                # unzip the file
+  gunzip ${filename}                # unzip the file
   wc -l ${uncomp_filename}          # count the lines in the unziped filename
   gzip ${uncomp_filename}           # rezip it
 done
