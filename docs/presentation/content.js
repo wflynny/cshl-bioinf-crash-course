@@ -139,6 +139,10 @@ var STEPS = [
    mol:{ mols:[ lib([{from:1,to:2,dir:"left",label:"Index 2 · i5 · 10 bp"}]),
                 lib([{from:6,to:7,dir:"left",label:"Read 2 · 90 bp"}]) ] } },
 
+ { title:"What the sequencer writes: FASTQ files", special:"filenames",
+   c:"Sequencing is done — the instrument writes the reads to <b>FASTQ</b> files, one per read, named by a fixed convention.",
+   d:"Our fragment's barcode + UMI end is written to the <b>R1</b> file and its transcript end to the <b>R2</b> file. The file name encodes the sample, lane, and read — learn it once and you can read any 10x run's files at a glance." },
+
  { title:"The reads, and where each piece lands", special:"reads",
    c:"Only some regions are actually base-called. Each lands in a specific read.",
    d:"R1 holds the barcode (green) and UMI (orange); the i7 / i5 indexes (gold) sit in the read header; R2 holds the transcript (pink)." },
@@ -163,7 +167,29 @@ function exBox(cls, seq, label){ return '<div class="exbox '+cls+'">'+seq+'<smal
 
 /* ---- SPECIAL: the four custom data panels --------------------------------- */
 var SPECIAL = {
-  // (12) library cartoon with brackets over sequenced regions, plus the two FASTQ records
+  // (12) what the sequencer writes: the double-stranded library, the R1/R2 file
+  //      names, and how a 10x FASTQ file name is structured.
+  filenames: function(){
+    var cartoon = molHTML({ topEnds:DS5, botEnds:DS3, cols:libCols() });
+    var r1 = "tinygex_S1_L001_<b>R1</b>_001.fastq.gz";
+    var r2 = "tinygex_S1_L001_<b>R2</b>_001.fastq.gz";
+    var map = "tinygex_S1_L001_R1_001.fastq.gz\n"
+            + "└─┬───┘ │  └┬─┘ │  └┬┘ └──┬───┘\n"
+            + "  │     │   │   │   │    file extension\n"
+            + "  │     │   │   │   always 001\n"
+            + "  │     │   │   Read indicator (R1 / R2 / I1)\n"
+            + "  │     │   Sequencer lane (L001, L002, ...)\n"
+            + "  │     Sample number in the run\n"
+            + "  Sample prefix (the library name)";
+    return cartoon
+      + '<div class="fqset">'
+      + fqBlock("Read 1 file", r1)
+      + fqBlock("Read 2 file", r2)
+      + fqBlock("How the name is built", map)
+      + '</div>';
+  },
+
+  // (13) library cartoon with brackets over sequenced regions, plus the two FASTQ records
   reads: function(){
     var cartoon = molHTML({ topEnds:DS5, botEnds:DS3, cols:libCols(), annotTop:[
       {from:3,to:4,label:"Read 1"}, {from:8,to:8,label:"Index 1"},
@@ -176,7 +202,7 @@ var SPECIAL = {
     return cartoon + '<div class="fqset">' + fqBlock("Read 1 FASTQ", r1) + fqBlock("Read 2 FASTQ", r2) + '</div>';
   },
 
-  // (13) extract barcode/UMI/fragment, align the fragment to a gene + location
+  // (14) extract barcode/UMI/fragment, align the fragment to a gene + location
   extract: function(){
     return '<div class="extract"><div class="exrow">'
       + exBox("b", CONTENT.droplet,                 "droplet barcode")
@@ -186,7 +212,7 @@ var SPECIAL = {
       + '<div class="exgene">'+CONTENT.gene+'<span class="loc">'+CONTENT.locus+'</span></div></div>';
   },
 
-  // (14) PCR copies of several species collapse to one molecule each
+  // (15) PCR copies of several species collapse to one molecule each
   dedup: function(){
     var d = CONTENT.dedup;
     function row(sp){ return '<div class="ddrow">' + mini(30, d.dropletColor) + mini(24, sp.umi) + mini(sp.insert, "var(--mol)") + '</div>'; }
@@ -198,7 +224,7 @@ var SPECIAL = {
       + '<div class="ddcol"><div class="ddh">molecules</div>'+collapsed+'</div></div>';
   },
 
-  // (15) the measurement sentence + the counts matrix
+  // (16) the measurement sentence + the counts matrix
   measure: function(){
     var umis = CONTENT.umis.map(function(u){ return '<span class="ub">UMI · '+u+'</span>'; }).join('');
     var line = '<div class="mline"><span>We measured</span>'
