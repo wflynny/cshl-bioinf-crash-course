@@ -20,7 +20,11 @@ LOREM
 }
 
 get_lorem data/project_files/readme.txt
-get_lorem scripts/analysis_scripts/analyze.sh
+cat > scripts/analysis_scripts/analyze.sh <<EOF
+#!/usr/bin/env bash
+echo "This is not the hint! Make sure there's nothing else hidden in this directory..."
+EOF
+chmod +x scripts/analysis_scripts/analyze.sh
 get_lorem projects/alpha_project/data/results.csv
 
 cat > hint <<EOF
