@@ -42,6 +42,9 @@ var CONTENT = {
   i5: "ATCCTGACCT",               // 10 bp i5 sample index
   r1qual: "JFJJJJJJJJJJJJJJJJJJJJJJJJJJ",       // Read 1 quality line (28 chars)
   r2seq:  "CCCTCAACACGGATATCAGCATCCTGTCCTTGCAGGCTTCTGAATTCCCTTCTGAGTTAATGTCAAATGACAGCAAAGCACTGTGTGGCT",
+  probeSeq: "CCCTCAACACGGATATCAGCATCCTGTCCTTGCAGGCTTCTGAATTCCCT",   // ~50 bp ligated Flex probe (placeholder)
+  r2spacer: "ACGTACGTACGTAC",   // 14 bp spacer between probe and sample barcode in R2
+  sampleBC: "AGGTTCAC",          // 8 bp Flex probe (sample) barcode, ~position 65 of R2
   gene:   "Actb",                 // gene the fragment aligns to
   locus:  "chr5:142,903,115–142,906,754",       // alignment coordinates (placeholder — set to your build)
 
@@ -66,7 +69,7 @@ var CONTENT = {
   }
 };
 
-var STEPS = [
+var STEPS_3P = [
  { title:"One mRNA, in one cell",
    c:"This is what we want to count: a single transcript from one gene.",
    d:"Single-stranded RNA, drawn tail-first — the <b>poly(A) tail</b> on the left is the only thing we can grab.",
@@ -160,6 +163,82 @@ var STEPS = [
    d:"Rows = droplets, columns = genes. Each deduplicated molecule adds 1 to its droplet × gene cell — the matrix you load in Scanpy or Seurat." },
 ];
 
+/* ===========================================================================
+   STEPS_FLEX — the probe-based (10x Flex / Fixed RNA Profiling) version.
+   Same destination (a counts matrix), but: fixed cells, a ligated probe pair
+   instead of poly(A) capture, and a probe-set lookup instead of genome
+   alignment. Middle/end steps mirror the 3' deck. Molecule drawings are a
+   first pass — refine the probe/ligation graphics as you like.
+=========================================================================== */
+var STEPS_FLEX = [
+ { title:"One mRNA, in a fixed cell",
+   c:"Flex starts from <b>fixed, permeabilized</b> cells -- the RNA is held in place, not floating free.",
+   d:"Same goal: count one transcript. But we won't grab its poly(A) tail; we'll target it with probes.",
+   mol:{ topEnds:DS5, hatch:true, cols:[ c(W.poly,PA), c(W.t,MOL), c(W.t,MOL), c(W.t,MOL) ] } },
+
+ { title:"A probe pair finds its target",
+   c:"For each gene in the panel, a pair of probes hybridizes to two <b>adjacent</b> sites on the transcript.",
+   d:"The <b>left</b> and <b>right</b> half-probes base-pair the transcript next to each other. The probe also carries a <b>sample barcode</b> and a <b>poly(A)</b> capture tail (dangling off to the side).",
+   mol:{ topEnds:DS5, botEnds:DS3, hatch:true, cols:[
+     c(W.t,MOL), c(W.lp,MOL,LP), c(W.rp,MOL,RP),
+     c(W.spc,0,SPC), c(W.sb,0,SB), c(W.spc,0,SPC), c(W.poly,0,PA) ] } },
+
+ { title:"Ligation joins the halves into one probe",
+   c:"Only if both halves bound correctly does a ligase join them into a single probe.",
+   d:"The two halves become <b>one probe sequence</b>. That ligation junction is the specificity check -- mis-hybridized halves don't join and wash away.",
+   mol:{ topEnds:DS5, botEnds:DS3, hatch:true, cols:[
+     c(W.t,MOL), c(W.probe,MOL,PROBE),
+     c(W.spc,0,SPC), c(W.sb,0,SB), c(W.spc,0,SPC), c(W.poly,0,PA) ] } },
+
+ { title:"Captured on the bead",
+   c:"In the droplet, the bead's poly(dT) captures the probe's poly(A); the primer adds a droplet barcode + UMI.",
+   d:"The molecule now carries <b>two</b> barcodes: the <b>sample barcode</b> (from the probe -- which sample) and the <b>droplet barcode</b> + <b>UMI</b> (from the bead -- which cell, which molecule).",
+   mol:{ topEnds:DS5, botEnds:DS3, cols: handlesBot().concat([
+     c(W.poly,PA,PT), c(W.spc,SPC,0), c(W.sb,SB,0), c(W.spc,SPC,0), c(W.probe,PROBE,0) ]) } },
+
+ { title:"Barcode + UMI welded on",
+   c:"After extension it's double-stranded -- every copy carries the same sample barcode, droplet barcode, and UMI.",
+   d:"From here, Flex and 3′ are nearly identical.",
+   mol:{ topEnds:DS5, botEnds:DS3, cols: handlesDs().concat([
+     c(W.poly,PA,PT), c(W.spc,SPC,SPC), c(W.sb,SB,SB), c(W.spc,SPC,SPC), c(W.probe,PROBE,PROBE) ]) } },
+
+ { title:"Amplified into a library",
+   c:"PCR amplifies it; index primers add the outer adapters.",
+   d:"<b>P5 / P7</b> grab the flow cell; <b>i5 / i7</b> are the library indexes. No fragmentation or template switch -- the probe is a fixed length.",
+   mol:{ inline:true, mols:[
+     { topEnds:DS5, botEnds:DS3, tag:"P5 / i5", cols:[ c(W.p5,P5,P5), c(W.i5,I5,I5) ] },
+     { topEnds:DS5, botEnds:DS3, cols: handlesDs().concat([
+        c(W.poly,PA,PT), c(W.spc,SPC,SPC), c(W.sb,SB,SB), c(W.spc,SPC,SPC), c(W.probe,PROBE,PROBE), c(W.read2,R2,R2) ]) },
+     { topEnds:DS5, botEnds:DS3, tag:"i7 / P7", cols:[ c(W.i7,I7,I7), c(W.p7,P7,P7) ] }
+   ] } },
+
+ { title:"Sequencing -- Read 1, then Read 2",
+   c:"Read 1 reads the droplet barcode + UMI; Read 2 reads the probe, then the sample barcode.",
+   d:"<b>R1</b> = droplet barcode + UMI. <b>R2</b> reads the <b>probe</b> first (~50 bp), then the <b>sample barcode</b> (~position 65) -- both in the same read.",
+   mol:{ mols:[ libFlex([{from:2,to:4,dir:"right",label:"Read 1 · barcode + UMI"}]),
+                libFlex([{from:7,to:10,dir:"left",label:"Read 2 · probe + sample BC"}]) ] } },
+
+ { title:"The reads", special:"readsFlex",
+   c:"R1 holds the droplet barcode + UMI; R2 holds the probe, then the sample barcode.",
+   d:"The i7 / i5 indexes sit in the read header, as in 3′." },
+
+ { title:"What the sequencer writes: FASTQ files", special:"filenames",
+   c:"Same FASTQ files, same naming -- Flex changes the biology, not the file format.",
+   d:"Droplet barcode + UMI in the <b>R1</b> file; probe + sample barcode in the <b>R2</b> file." },
+
+ { title:"Extract the labels, match the probe", special:"probematch",
+   c:"From the reads we pull four things -- and turn the probe into a gene.",
+   d:"<b>Sample barcode</b> (which sample), <b>droplet barcode</b> (which cell), <b>UMI</b> (which molecule), plus the <b>probe</b> -- looked up in the probe set to give a <b>gene</b>. The molecule is now <b>(sample, droplet, UMI, gene)</b>." },
+
+ { title:"…then deduplicated", special:"dedup",
+   c:"Copies of the same (droplet, UMI, gene) collapse to one -- just like 3′.",
+   d:"PCR copies vanish; real molecules remain. (The sample barcode then splits cells back into their samples.)" },
+
+ { title:"…and it becomes the counts matrix", special:"measure",
+   c:"Two distinct UMIs of " + CONTENT.gene + " in this droplet means a count of 2.",
+   d:"Rows = droplets, columns = genes -- one matrix per sample. The same object you load in Scanpy or Seurat, built from probes instead of poly(A) capture." },
+];
+
 /* ---- small content helpers ---- */
 function rep(ch, n){ return new Array(n + 1).join(ch); }
 function fqBlock(title, body){ return '<div class="fqb"><div class="fqt">'+title+'</div><div class="fastq">'+body+'</div></div>'; }
@@ -170,7 +249,7 @@ var SPECIAL = {
   // (12) what the sequencer writes: the double-stranded library, the R1/R2 file
   //      names, and how a 10x FASTQ file name is structured.
   filenames: function(){
-    var cartoon = molHTML({ topEnds:DS5, botEnds:DS3, cols:libCols() });
+    var cartoon = molHTML({ topEnds:DS5, botEnds:DS3, cols:(MODE === "flex" ? libFlexCols() : libCols()) });
     var r1 = "tinygex_S1_L001_<b>R1</b>_001.fastq.gz";
     var r2 = "tinygex_S1_L001_<b>R2</b>_001.fastq.gz";
     var map = "tinygex_S1_L001_R1_001.fastq.gz\n"
@@ -240,5 +319,30 @@ var SPECIAL = {
       }).join("") + "</tr>";
     }).join("");
     return '<div class="measure">'+line+'<table class="mx">'+head+body+'</table></div>';
+  },
+
+  // ---- Flex (probe-based) variants -----------------------------------------
+  // (Flex) the reads: R2 holds the probe (not a random transcript fragment)
+  readsFlex: function(){
+    var cartoon = molHTML({ topEnds:DS5, botEnds:DS3, cols:libFlexCols(), annotTop:[
+      {from:3,to:4,label:"Read 1"}, {from:11,to:11,label:"Index 1"},
+      {from:1,to:1,label:"Index 2"}, {from:7,to:9,label:"Read 2"} ] });
+    var idx = '<span class="x">'+CONTENT.i7+'</span><span class="h">+</span><span class="x">'+CONTENT.i5+'</span>';
+    var r1 = '<span class="h">@'+CONTENT.readName+' 1:N:0:</span>'+idx+'\n'
+           + '<span class="b">'+CONTENT.droplet+'</span><span class="u">'+CONTENT.umis[0]+'</span>\n+\n'+CONTENT.r1qual;
+    var r2 = '<span class="h">@'+CONTENT.readName+' 2:N:0:</span>'+idx+'\n'
+           + '<span class="pr">'+CONTENT.probeSeq+'</span>'+CONTENT.r2spacer+'<span class="sb">'+CONTENT.sampleBC+'</span>\n+\n'+rep("J", CONTENT.probeSeq.length+CONTENT.r2spacer.length+CONTENT.sampleBC.length);
+    return cartoon + '<div class="fqset">' + fqBlock("Read 1 FASTQ", r1) + fqBlock("Read 2 FASTQ (probe + sample barcode)", r2) + '</div>';
+  },
+
+  // (Flex) extract barcode/UMI/probe, then look the probe up in the probe set
+  probematch: function(){
+    return '<div class="extract"><div class="exrow">'
+      + exBox("sb", CONTENT.sampleBC,                 "sample barcode")
+      + exBox("b", CONTENT.droplet,                  "droplet barcode")
+      + exBox("u", CONTENT.umis[0],                  "UMI")
+      + exBox("pr", CONTENT.probeSeq.slice(0,12)+"…","probe sequence")
+      + '</div><div class="exarr">look the probe up in the probe set ↓</div>'
+      + '<div class="exgene">'+CONTENT.gene+'<span class="loc">probe set entry &middot; '+CONTENT.gene+'</span></div></div>';
   }
 };

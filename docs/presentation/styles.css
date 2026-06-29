@@ -95,4 +95,21 @@ h1{font-size:clamp(19px,2.6vw,25px);font-weight:600;margin:3px 0 0;letter-spacin
 .btn:hover{border-color:var(--soft)} .btn:disabled{opacity:.35;cursor:default} .btn.p{background:var(--ink);color:#fff;border-color:var(--ink)}
 .dots{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--hair);border:0;padding:0;cursor:pointer}.dot.on{background:var(--mol)}
+/* ---- Flex (probe-based) additions ---- */
+:root{ --lp:#7a5ea8; --rp:#a07cc6; --probe:#7a5ea8; --sbc:#b5762e; --spc:#cfd3d6; }
+.k-lp{background:var(--lp)} .k-rp{background:var(--rp)}
+.k-probe{background:var(--probe)} .k-sbc{background:var(--sbc)} .k-spc{background:var(--spc)}
+.blk.hatch{background-image:repeating-linear-gradient(45deg, rgba(255,255,255,.42) 0, rgba(255,255,255,.42) 1.5px, transparent 1.5px, transparent 5px)}  /* fixed/crosslinked RNA */
+.fastq .pr{color:#c8a6e6}              /* probe sequence in the R2 FASTQ */
+.fastq .sb{color:#e0b35e}              /* sample barcode in the R2 FASTQ */
+.exbox.pr{background:var(--probe)}     /* probe box in the probematch panel */
+.exbox.sb{background:var(--sbc)}       /* sample-barcode box in probematch */
+
+/* ---- 3' GEX / Flex mode switch (header) ---- */
+.hr{display:flex;align-items:center;gap:14px}
+.modeswitch{display:inline-flex;border:1px solid var(--hair);border-radius:7px;overflow:hidden}
+.mode{font:inherit;font-size:12px;font-weight:500;border:0;background:#fff;color:var(--soft);padding:6px 12px;cursor:pointer}
+.mode+.mode{border-left:1px solid var(--hair)}
+.mode.on{background:var(--ink);color:#fff}
+
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}

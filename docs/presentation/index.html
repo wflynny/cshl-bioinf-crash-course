@@ -12,8 +12,14 @@
 <body>
 <div class="wrap">
   <header>
-    <div><p class="kicker">Tracking one molecule · 10x 3′ gene expression</p><h1 id="title"></h1></div>
-    <div class="count"><span id="cur">1</span> / <span id="tot"></span></div>
+    <div><p class="kicker" id="kicker">Tracking one molecule · 10x 3′ gene expression</p><h1 id="title"></h1></div>
+    <div class="hr">
+      <div class="modeswitch" role="group" aria-label="assay type">
+        <button class="mode on" id="mode-3p" type="button">3′ GEX</button>
+        <button class="mode" id="mode-flex" type="button">Flex</button>
+      </div>
+      <div class="count"><span id="cur">1</span> / <span id="tot"></span></div>
+    </div>
   </header>
 
   <section class="stage"><div id="mol"></div><div class="cap"><p class="c" id="c"></p><p class="d" id="d"></p></div></section>
