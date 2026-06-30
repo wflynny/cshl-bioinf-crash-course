@@ -70,22 +70,22 @@ var CONTENT = {
 };
 
 var STEPS_3P = [
- { title:"One mRNA, in one cell",
+ { title:"One mRNA, in one cell", compartment:"cell",
    c:"This is what we want to count: a single transcript from one gene.",
    d:"Single-stranded RNA, drawn tail-first — the <b>poly(A) tail</b> on the left is the only thing we can grab.",
    mol:{ topEnds:DS5, cols:[ c(W.poly,PA), c(W.t,MOL), c(W.t,MOL), c(W.t,MOL) ] } },
 
- { title:"Captured on the bead",
+ { title:"Captured on the bead", compartment:"droplet",
    c:"The bead's poly(dT) base-pairs the poly(A) tail.",
    d:"Only the tail is paired; the transcript dangles. The primer also carries a <b>droplet barcode</b> (which droplet) and a <b>UMI</b> (which molecule).",
    mol:{ topEnds:DS5, botEnds:DS3, cols: handlesBot().concat([ c(W.poly,PA,PT), c(W.t,MOL), c(W.t,MOL), c(W.t,MOL) ]) } },
 
- { title:"Reverse transcription",
+ { title:"Reverse transcription", compartment:"droplet",
    c:"RT copies the RNA into a cDNA strand.",
    d:"An <b>RNA : cDNA hybrid</b> — RNA template on top, the new DNA copy beneath, antiparallel. Barcode and UMI are now welded to a copy of your transcript.",
    mol:{ topEnds:DS5, botEnds:DS3, cols: handlesBot().concat([ c(W.poly,PA,PT), c(W.t,MOL,CD), c(W.t,MOL,CD), c(W.t,MOL,CD) ]) } },
 
- { title:"Template switch",
+ { title:"Template switch", compartment:"droplet",
    c:"At the far (5′) end, C's are added and a template-switch oligo is copied on.",
    d:"The copy now has a handle at <b>both</b> ends, so it can be amplified by PCR.",
    mol:{ topEnds:DS5, botEnds:DS3, cols: handlesBot().concat([ c(W.poly,PA,PT), c(W.t,MOL,CD), c(W.t,MOL,CD), c(W.t,MOL,CD), c(W.tso,0,TSO) ]) } },
@@ -171,36 +171,36 @@ var STEPS_3P = [
    first pass — refine the probe/ligation graphics as you like.
 =========================================================================== */
 var STEPS_FLEX = [
- { title:"One mRNA, in a fixed cell",
+ { title:"One mRNA, in a fixed cell", compartment:"cell",
    c:"Flex starts from <b>fixed, permeabilized</b> cells -- the RNA is held in place, not floating free.",
    d:"Same goal: count one transcript. But we won't grab its poly(A) tail; we'll target it with probes.",
    mol:{ topEnds:DS5, hatch:true, cols:[ c(W.poly,PA), c(W.t,MOL), c(W.t,MOL), c(W.t,MOL) ] } },
 
- { title:"A probe pair finds its target",
+ { title:"A probe pair finds its target", compartment:"cell",
    c:"For each gene in the panel, a pair of probes hybridizes to two <b>adjacent</b> sites on the transcript.",
-   d:"The <b>left</b> and <b>right</b> half-probes base-pair the transcript next to each other. The probe also carries a <b>sample barcode</b> and a <b>poly(A)</b> capture tail (dangling off to the side).",
+   d:"The <b>left</b> and <b>right</b> half-probes base-pair the transcript next to each other. The probe also carries a <b>sample barcode</b> and a <b>capture sequence</b> (Capture Sequence 1) for the bead (dangling off to the side).",
    mol:{ topEnds:DS5, botEnds:DS3, hatch:true, cols:[
      c(W.t,MOL), c(W.lp,MOL,LP), c(W.rp,MOL,RP),
-     c(W.spc,0,SPC), c(W.sb,0,SB), c(W.spc,0,SPC), c(W.poly,0,PA) ] } },
+     c(W.spc,0,SPC), c(W.sb,0,SB), c(W.spc,0,SPC), c(W.cap,0,CS) ] } },
 
- { title:"Ligation joins the halves into one probe",
+ { title:"Ligation joins the halves into one probe", compartment:"cell",
    c:"Only if both halves bound correctly does a ligase join them into a single probe.",
    d:"The two halves become <b>one probe sequence</b>. That ligation junction is the specificity check -- mis-hybridized halves don't join and wash away.",
    mol:{ topEnds:DS5, botEnds:DS3, hatch:true, cols:[
      c(W.t,MOL), c(W.probe,MOL,PROBE),
-     c(W.spc,0,SPC), c(W.sb,0,SB), c(W.spc,0,SPC), c(W.poly,0,PA) ] } },
+     c(W.spc,0,SPC), c(W.sb,0,SB), c(W.spc,0,SPC), c(W.cap,0,CS) ] } },
 
- { title:"Captured on the bead",
-   c:"In the droplet, the bead's poly(dT) captures the probe's poly(A); the primer adds a droplet barcode + UMI.",
+ { title:"Captured on the bead", compartment:"droplet",
+   c:"In the droplet, the bead's <b>capture sequence</b> binds the probe's capture sequence; the primer adds a droplet barcode + UMI.",
    d:"The molecule now carries <b>two</b> barcodes: the <b>sample barcode</b> (from the probe -- which sample) and the <b>droplet barcode</b> + <b>UMI</b> (from the bead -- which cell, which molecule).",
    mol:{ topEnds:DS5, botEnds:DS3, cols: handlesBot().concat([
-     c(W.poly,PA,PT), c(W.spc,SPC,0), c(W.sb,SB,0), c(W.spc,SPC,0), c(W.probe,PROBE,0) ]) } },
+     c(W.cap,CS,CS), c(W.spc,SPC,0), c(W.sb,SB,0), c(W.spc,SPC,0), c(W.probe,PROBE,0) ]) } },
 
  { title:"Barcode + UMI welded on",
    c:"After extension it's double-stranded -- every copy carries the same sample barcode, droplet barcode, and UMI.",
    d:"From here, Flex and 3′ are nearly identical.",
    mol:{ topEnds:DS5, botEnds:DS3, cols: handlesDs().concat([
-     c(W.poly,PA,PT), c(W.spc,SPC,SPC), c(W.sb,SB,SB), c(W.spc,SPC,SPC), c(W.probe,PROBE,PROBE) ]) } },
+     c(W.cap,CS,CS), c(W.spc,SPC,SPC), c(W.sb,SB,SB), c(W.spc,SPC,SPC), c(W.probe,PROBE,PROBE) ]) } },
 
  { title:"Amplified into a library",
    c:"PCR amplifies it; index primers add the outer adapters.",
@@ -208,14 +208,20 @@ var STEPS_FLEX = [
    mol:{ inline:true, mols:[
      { topEnds:DS5, botEnds:DS3, tag:"P5 / i5", cols:[ c(W.p5,P5,P5), c(W.i5,I5,I5) ] },
      { topEnds:DS5, botEnds:DS3, cols: handlesDs().concat([
-        c(W.poly,PA,PT), c(W.spc,SPC,SPC), c(W.sb,SB,SB), c(W.spc,SPC,SPC), c(W.probe,PROBE,PROBE), c(W.read2,R2,R2) ]) },
+        c(W.cap,CS,CS), c(W.spc,SPC,SPC), c(W.sb,SB,SB), c(W.spc,SPC,SPC), c(W.probe,PROBE,PROBE), c(W.read2,R2,R2) ]) },
      { topEnds:DS5, botEnds:DS3, tag:"i7 / P7", cols:[ c(W.i7,I7,I7), c(W.p7,P7,P7) ] }
    ] } },
 
- { title:"Sequencing -- Read 1, then Read 2",
-   c:"Read 1 reads the droplet barcode + UMI; Read 2 reads the probe, then the sample barcode.",
-   d:"<b>R1</b> = droplet barcode + UMI. <b>R2</b> reads the <b>probe</b> first (~50 bp), then the <b>sample barcode</b> (~position 65) -- both in the same read.",
+ { title:"Sequencing -- Read 1, then Index 1",
+   c:"Each read is primed off a handle and extends one way (arrow).",
+   d:"<b>Read 1</b> reads the droplet barcode + UMI (28 bp). <b>Index 1</b> reads the i7 library index.",
    mol:{ mols:[ libFlex([{from:2,to:4,dir:"right",label:"Read 1 · barcode + UMI"}]),
+                libFlex([{from:10,to:11,dir:"right",label:"Index 1 · i7"}]) ] } },
+
+ { title:"Sequencing -- Index 2, then Read 2",
+   c:"The flow cell turns the fragment around to read the other side.",
+   d:"<b>Index 2</b> reads the i5 library index. <b>Read 2</b> reads the <b>probe</b> first (~50 bp), then the <b>sample barcode</b> (~position 65).",
+   mol:{ mols:[ libFlex([{from:1,to:2,dir:"left",label:"Index 2 · i5"}]),
                 libFlex([{from:7,to:10,dir:"left",label:"Read 2 · probe + sample BC"}]) ] } },
 
  { title:"The reads", special:"readsFlex",

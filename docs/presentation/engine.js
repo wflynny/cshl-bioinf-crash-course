@@ -20,7 +20,7 @@
    Column widths in px. Keep poly==poly so poly(A)/poly(dT) line up, and
    t==cdna so the transcript sits over its copy in the hybrid steps. */
 var W = { read1:72, read2:72, bc:58, umi:44, poly:44, t:50, cdna:50,
-          tso:44, p5:38, i5:50, i7:50, p7:38, oh:18, lp:54, rp:54, probe:108, sb:50, spc:14 };
+          tso:44, p5:38, i5:50, i7:50, p7:38, oh:18, lp:54, rp:54, probe:108, sb:50, spc:14, cap:44 };
 
 /* Block definitions. label = text shown; seq = shown in monospace instead.
    To add a new part: add a block here AND a matching `.k-<kind>` rule in
@@ -34,7 +34,7 @@ var R1  = {kind:"handle", label:"Read 1"},  R2 = {kind:"handle", label:"Read 2"}
     I7  = {kind:"idx",    label:"i7"},  P7 = {kind:"p7",  label:"P7"},
     OA  = {kind:"oh",     seq:"A"},     OT = {kind:"oh",  seq:"T"},
     LP  = {kind:"lp",     label:"probe L"}, RP = {kind:"rp", label:"probe R"},   // Flex probe halves
-    PROBE = {kind:"probe", label:"probe"}, SB = {kind:"sbc", label:"sample"}, SPC = {kind:"spc"};  // ligated probe / sample barcode / spacer
+    PROBE = {kind:"probe", label:"probe"}, SB = {kind:"sbc", label:"sample"}, SPC = {kind:"spc"}, CS = {kind:"cap", label:"CS1"};  // ligated probe / sample bc / spacer / capture seq
 
 /* Strand end-label pairs ["leftLabel","rightLabel"]. Top strand runs 3'->5'
    left to right; the bottom (copy) strand is antiparallel, so 5'->3'. */
@@ -56,13 +56,13 @@ function libCols(){
 function lib(arrow){ return { topEnds:DS5, botEnds:DS3, cols:libCols(), arrow:arrow }; }
 
 /* Flex library. The ligated probe carries: probe seq -- spacer -- sample barcode
-   -- spacer -- poly(A). The gel bead's poly(dT) captures the poly(A) and adds the
-   cell (droplet) barcode + UMI. Column indices:
-   0 P5,1 i5,2 Read1,3 droplet-bc,4 UMI,5 polyA/T,6 spacer,7 sample-bc,8 spacer,
+   -- spacer -- partial capture sequence (CS1). The gel bead's complementary
+   capture sequence binds CS1 and adds the cell (droplet) barcode + UMI. Indices:
+   0 P5,1 i5,2 Read1,3 droplet-bc,4 UMI,5 capture-seq,6 spacer,7 sample-bc,8 spacer,
    9 probe,10 Read2,11 i7,12 P7. */
 function libFlexCols(){
   return [ c(W.p5,P5,P5), c(W.i5,I5,I5), c(W.read1,R1,R1), c(W.bc,BC,BC), c(W.umi,UM,UM),
-           c(W.poly,PA,PT), c(W.spc,SPC,SPC), c(W.sb,SB,SB), c(W.spc,SPC,SPC), c(W.probe,PROBE,PROBE),
+           c(W.cap,CS,CS), c(W.spc,SPC,SPC), c(W.sb,SB,SB), c(W.spc,SPC,SPC), c(W.probe,PROBE,PROBE),
            c(W.read2,R2,R2), c(W.i7,I7,I7), c(W.p7,P7,P7) ];
 }
 function libFlex(arrow){ return { topEnds:DS5, botEnds:DS3, cols:libFlexCols(), arrow:arrow }; }
@@ -153,7 +153,9 @@ function render(){
   $("#title").textContent = st.title;
   $("#c").innerHTML = st.c || "";
   $("#d").innerHTML = st.d || "";
-  molEl.innerHTML = st.special ? '<div class="molset">'+SPECIAL[st.special]()+'</div>' : molHTML(st.mol);
+  var inner = st.special ? '<div class="molset">'+SPECIAL[st.special]()+'</div>' : molHTML(st.mol);
+  if(st.compartment) inner = '<div class="compartment cmp-'+st.compartment+'"><span class="clabel">'+st.compartment+'</span>'+inner+'</div>';
+  molEl.innerHTML = inner;
   for(var k=0;k<dots.children.length;k++) dots.children[k].className = "dot" + (k===STEP ? " on" : "");
   $("#prev").disabled = STEP === 0;
   $("#next").disabled = STEP === STEPS.length - 1;

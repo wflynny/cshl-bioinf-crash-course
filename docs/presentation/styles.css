@@ -96,10 +96,18 @@ h1{font-size:clamp(19px,2.6vw,25px);font-weight:600;margin:3px 0 0;letter-spacin
 .dots{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--hair);border:0;padding:0;cursor:pointer}.dot.on{background:var(--mol)}
 /* ---- Flex (probe-based) additions ---- */
-:root{ --lp:#7a5ea8; --rp:#a07cc6; --probe:#7a5ea8; --sbc:#b5762e; --spc:#cfd3d6; }
+:root{ --lp:#7a5ea8; --rp:#a07cc6; --probe:#7a5ea8; --sbc:#b5762e; --spc:#cfd3d6; --cap:#3f8ea8; }
 .k-lp{background:var(--lp)} .k-rp{background:var(--rp)}
-.k-probe{background:var(--probe)} .k-sbc{background:var(--sbc)} .k-spc{background:var(--spc)}
+.k-probe{background:var(--probe)} .k-sbc{background:var(--sbc)} .k-spc{background:var(--spc)} .k-cap{background:var(--cap)}
 .blk.hatch{background-image:repeating-linear-gradient(45deg, rgba(255,255,255,.42) 0, rgba(255,255,255,.42) 1.5px, transparent 1.5px, transparent 5px)}  /* fixed/crosslinked RNA */
+
+/* compartment outline (which steps are inside a cell / droplet / bulk) */
+:root{ --cmp-cell:#7faf86; --cmp-droplet:#6fa6c8; --cmp-bulk:#b3ad9f; }
+.compartment{position:relative;display:inline-block;border:1.5px dashed var(--hair);border-radius:16px;padding:28px 32px 22px}
+.clabel{position:absolute;top:-9px;left:18px;background:var(--paper);padding:0 9px;font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.cmp-cell{border-color:var(--cmp-cell)} .cmp-cell .clabel{color:var(--cmp-cell)}
+.cmp-droplet{border-color:var(--cmp-droplet)} .cmp-droplet .clabel{color:var(--cmp-droplet)}
+.cmp-bulk{border-color:var(--cmp-bulk)} .cmp-bulk .clabel{color:var(--cmp-bulk)}
 .fastq .pr{color:#c8a6e6}              /* probe sequence in the R2 FASTQ */
 .fastq .sb{color:#e0b35e}              /* sample barcode in the R2 FASTQ */
 .exbox.pr{background:var(--probe)}     /* probe box in the probematch panel */
