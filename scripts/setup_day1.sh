@@ -1,37 +1,27 @@
 #!/usr/bin/env bash
 #
-# setup_day1.sh — one-time per-student setup for Day 1 of the CSHL crash course.
+# setup_day1.sh -- one-time per-student setup for Day 1 of the CSHL crash course.
 #
-# Establishes the single working-directory convention used by every Day 1 module:
-#   $COURSE/work/<module>          per-module working dirs
-#   $COURSE/work/data/{tiny_fastqs,tiny_ref}   symlinks into the read-only source
+# Creates your per-module working dirs and a single read-only link to the shared
+# course data, all under your home (~):
+#   ~/work/<module>        per-module working dirs (1.05 .. 1.10)
+#   ~/work/data -> SHARED  read-only link to the shared course data
 #
-# Run once after logging in to the HPC:
-#   bash setup_day1.sh
-# It is safe to re-run (idempotent).
+# Run it ONCE, near the end of module 1.05:
+#   bash /grid/singlecellcourse/data/crash-course/2026/setup_day1.sh
+# Safe to re-run (idempotent). Nothing is added to your shell; no variables to set.
 #
-# ------------------------------------------------------------------------------
-# Environment profiles
-# ------------------------------------------------------------------------------
-# Default profile targets the CSHL HPC. For local testing on the JAX 'Elion'
-# cluster, reroute every path under one ROOT instead of /grid:
-#   bash setup_day1.sh --local
+# ---------------------------------------------------------------------------
+# The shared-data location is auto-detected: it prefers the new
+# /grid/courses/data/singlecell/crash-course if that exists, otherwise the 2026
+# staging dir. Override with SHARED=/path if needed.
+# For local testing off-cluster:  --local [--seed-test-data]   (optional ROOT=...)
 #
-# Override any of ROOT / COURSE / SHARED from the environment without editing
-# this file, e.g.:
-#   ROOT=/sc/service/analysis/develop/flynnb/cshl-crash-course bash setup_day1.sh --local
-#   SHARED=/some/other/source bash setup_day1.sh
-#
-# Add --seed-test-data (handy with --local) to create placeholder tiny_fastqs/
-# and tiny_ref/ under SHARED so the symlink plumbing can be dry-run even where
-# the real dataset isn't staged yet.
-#
-# !!! UNVERIFIED: the cshl-profile /grid paths below are placeholders confirmed
-# !!! by no one yet. Verify on the actual HPC before this ships to students.
+# !!! UNVERIFIED: the /grid paths are placeholders until confirmed on the HPC.
+# ---------------------------------------------------------------------------
 
 set -euo pipefail
 
-# --- parse args ----------------------------------------------------------------
 PROFILE="${CRASH_PROFILE:-cshl}"
 SEED_TEST_DATA=0
 for arg in "$@"; do
@@ -39,91 +29,64 @@ for arg in "$@"; do
     --local|--jax)    PROFILE="local" ;;
     --cshl)           PROFILE="cshl" ;;
     --seed-test-data) SEED_TEST_DATA=1 ;;
-    -h|--help)
-      grep '^#' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) grep '^#' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "unknown argument: ${arg} (try --help)" >&2; exit 2 ;;
   esac
 done
 
-# --- resolve locations per profile ---------------------------------------------
-case "${PROFILE}" in
-  cshl)
-    # CONFIRM BEFORE USE (UNVERIFIED)
-    export COURSE="${COURSE:-/grid/singlecellcourse/home/${USER}}"
-    SHARED="${SHARED:-/grid/singlecellcourse/data/crash-course}"
-    ;;
-  local)
-    # For local JAX testing on Elion. Everything lives under one ROOT.
-    ROOT="${ROOT:-/sc/service/analysis/develop/flynnb/cshl-crash-course}"
-    export COURSE="${COURSE:-${ROOT}/home/${USER}}"
-    SHARED="${SHARED:-${ROOT}/shared}"
-    ;;
-  *)
-    echo "unknown CRASH_PROFILE: '${PROFILE}' (use cshl|local)" >&2; exit 2 ;;
-esac
+# --- resolve WORK (~/work) and SHARED (read-only course data) ------------------
+if [ "${PROFILE}" = "local" ]; then
+  ROOT="${ROOT:-/sc/service/analysis/develop/flynnb/cshl-crash-course}"
+  WORK="${ROOT}/home/${USER}/work"
+  SHARED="${SHARED:-${ROOT}/shared}"
+else
+  WORK="${HOME}/work"
+  if [ -z "${SHARED:-}" ]; then        # auto-detect: prefer new location, else 2026
+    for cand in /grid/courses/data/singlecell/crash-course \
+                /grid/singlecellcourse/data/crash-course/2026; do
+      if [ -d "${cand}" ]; then SHARED="${cand}"; break; fi
+    done
+    SHARED="${SHARED:-/grid/singlecellcourse/data/crash-course/2026}"   # UNVERIFIED default
+  fi
+fi
 
 echo "profile : ${PROFILE}"
-echo "COURSE  : ${COURSE}"
+echo "WORK    : ${WORK}"
 echo "SHARED  : ${SHARED}"
 echo
 
-# --- optionally seed placeholder source data (testing only) --------------------
-# Creates the canonical tiny dataset layout with empty-but-valid files so the
-# rest of the script (and reset_1.10.sh) can be exercised end-to-end locally.
+# --- optionally seed PLACEHOLDER shared data (testing only) --------------------
 if [ "${SEED_TEST_DATA}" -eq 1 ]; then
-  echo "Seeding PLACEHOLDER test data under ${SHARED} (not real sequencing data)..."
+  echo "Seeding PLACEHOLDER data under ${SHARED} (not real sequencing data)..."
   mkdir -p "${SHARED}/tiny_fastqs"
-  for lane in L001 L002; do
-    for read in I1 R1 R2; do
-      printf '' | gzip > "${SHARED}/tiny_fastqs/tinygex_S1_${lane}_${read}_001.fastq.gz"
-    done
-  done
+  for lane in L001 L002; do for read in I1 R1 R2; do
+    printf '' | gzip > "${SHARED}/tiny_fastqs/tinygex_S1_${lane}_${read}_001.fastq.gz"
+  done; done
   mkdir -p "${SHARED}/tiny_ref/fasta" "${SHARED}/tiny_ref/genes" "${SHARED}/tiny_ref/star"
-  : > "${SHARED}/tiny_ref/reference.json"
-  : > "${SHARED}/tiny_ref/fasta/genome.fa"
+  : > "${SHARED}/tiny_ref/reference.json"; : > "${SHARED}/tiny_ref/fasta/genome.fa"
   printf '' | gzip > "${SHARED}/tiny_ref/genes/genes.gtf.gz"
   echo
 fi
 
-# --- fail loudly if the source data isn't where we think it is -----------------
-# Better a clear error now than 20 students with dangling symlinks mid-lesson.
-for src in "${SHARED}/tiny_fastqs" "${SHARED}/tiny_ref"; do
-  if [ ! -d "${src}" ]; then
-    echo "ERROR: expected read-only source directory not found:" >&2
-    echo "         ${src}" >&2
-    echo "       Fix SHARED (currently '${SHARED}'), or for local testing run:" >&2
-    echo "         bash $(basename "$0") --local --seed-test-data" >&2
-    exit 1
-  fi
-done
-
-# --- make COURSE persist across login sessions (idempotent) --------------------
-# Only for the real course profile; don't touch a tester's shell config locally.
-if [ "${PROFILE}" = "cshl" ]; then
-  if ! grep -q 'export COURSE=' "${HOME}/.bashrc" 2>/dev/null; then
-    echo 'export COURSE=/grid/singlecellcourse/home/$USER' >> "${HOME}/.bashrc"  # UNVERIFIED path
-  fi
-else
-  echo "(local profile: leaving ${HOME}/.bashrc untouched; export COURSE=${COURSE} yourself if needed)"
+# --- fail loudly if the shared data isn't where we think it is -----------------
+if [ ! -d "${SHARED}/tiny_fastqs" ] || [ ! -d "${SHARED}/tiny_ref" ]; then
+  echo "ERROR: shared course data not found under:" >&2
+  echo "         ${SHARED}   (expected tiny_fastqs/ and tiny_ref/ inside)" >&2
+  echo "       Set SHARED=/correct/path, or for local testing run:" >&2
+  echo "         bash $(basename "$0") --local --seed-test-data" >&2
+  exit 1
 fi
 
-# --- per-module working dirs ---------------------------------------------------
-# numbers match the renumbered hands-on modules (1.05 Navigating-CLI ... 1.10
-# Putting-It-All-Together).
-mkdir -p "${COURSE}/work"/{1.05,1.06,1.07,1.08,1.09,1.10}
+# --- per-module working dirs (1.05 Navigating .. 1.10 Putting-It-All-Together) --
+mkdir -p "${WORK}"/{1.05,1.06,1.07,1.08,1.09,1.10}
 
-# --- one read-only data location, symlinked from the shared source -------------
-# ln -sfn: force-replace and don't dereference an existing symlink-to-dir, so
-# re-running points the link at the current source rather than nesting inside it.
-mkdir -p "${COURSE}/work/data"
-ln -sfn "${SHARED}/tiny_fastqs" "${COURSE}/work/data/tiny_fastqs"
-ln -sfn "${SHARED}/tiny_ref"    "${COURSE}/work/data/tiny_ref"
+# --- single read-only passthrough to the shared course data --------------------
+# ln -sfn: replace any existing link and don't nest inside it on re-run.
+ln -sfn "${SHARED}" "${WORK}/data"
 
-# --- report where everything now lives -----------------------------------------
 echo "Setup complete."
-echo "  working tree : ${COURSE}/work"
-echo "  modules      : 1.05,1.06,1.07,1.08,1.09,1.10"
-echo "  tiny dataset : ${COURSE}/work/data/{tiny_fastqs,tiny_ref}"
+echo "  working tree : ${WORK}   (1.05 .. 1.10)"
+echo "  shared data  : ${WORK}/data -> ${SHARED}"
 echo
-echo "The dataset directories are symlinks into the read-only source; work in"
-echo "your module dirs (e.g. cd \$COURSE/work/1.05) and never write into data/."
+echo "Use  ~/work/<module>  for your work, and  ~/work/data/...  for the shared"
+echo "course data (tiny_fastqs, tiny_ref, exercise sets). Never write into data/."
